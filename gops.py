@@ -3,6 +3,8 @@ import random
 import geneticgame
 
 GAME_SIZE = 14
+GROUPS = 3
+BITS_PER_GROUP = 8
 
 class GOPSGame ():
   '''
@@ -19,9 +21,11 @@ class GOPSGame ():
   @staticmethod
   def play (p1, p2, game_parms):
     ret = 0
-    cards = [[True] * GAME_SIZE] * 2
+    cards = [[True] * GAME_SIZE, [True] * GAME_SIZE]
     strats = [p1, p2]
     targets = random.sample(range(GAME_SIZE), k=GAME_SIZE)
+    score = [0, 0]
+    final = [0, 0]
     for round in range (GAME_SIZE):
         target = targets[round]
         for who in (0, 1):
@@ -42,10 +46,31 @@ class GOPSGame ():
                 if cards[who][card-1]  or  fallback != 'D':
                     break
                 fallback = 'C' # in case this is the last time through the loop
-            cards[who][card-1] = False
-            print (round, target, who, card, fallback)
-    return 1
-    # exit()
+            if cards[who][card-1]:
+                testers = [card]
+            else:
+                if fallback == 'L': # next lowest, if possible
+                    testers = list(reversed(range(1, card))) + list (range (card+1, GAME_SIZE+1))
+                elif fallback == 'H': # next highest
+                    testers = list(range (card+1, GAME_SIZE+1)) + list(reversed(range(1, card)))
+                elif fallback == 'C': # closest
+                    testers = sorted (range(1, GAME_SIZE+1), key=lambda x: abs(card-x) + random.random() / 2) # randomness so we don't always start
+                    # with lower or always with higher
+                else:
+                    raise Exception ("bad fallback method")
+            for good_card in testers:
+                if cards[who][good_card-1]:
+                    break
+            # print (round, target, who, card, fallback, testers, good_card)
+            cards[who][good_card-1] = False
+            final[who] = good_card
+        if (final[0] > final[1]):
+            score[0] += target + 1
+        elif (final[1] > final[0]):
+            score[1] += target + 1
+        # print ('...', score)
+        diff = score[0] - score[1]
+        return (diff + 20) if diff > 0 else ((diff - 20) if diff < 0 else 0)
 
   @staticmethod
   def decode (internal):
@@ -53,11 +78,11 @@ class GOPSGame ():
     for target in range (GAME_SIZE):
         ret [target] = {}
         picker = ""
-        for item in range(3):
+        for item in range(GROUPS):
             info = {}
             val = 0
-            for pos in range(8):
-                val = val * 2 + internal[(target * 3 + item) * 8 + pos]
+            for pos in range(BITS_PER_GROUP):
+                val = val * 2 + internal[(target * GROUPS + item) * BITS_PER_GROUP + pos]
                 new = True
                 if pos == 3:
                     info ['card'] = 'low' if val == 0 else 'high' if val == 15 else val
@@ -72,6 +97,31 @@ class GOPSGame ():
             ret [target][item] = info
         ret [target]['picker'] = picker
     return ret
+
+  @staticmethod
+  def display (internal):
+      ret = ''
+      for target in range (GAME_SIZE):
+          if target:
+              ret += ' '
+          for item in range(GROUPS):
+              val = 0
+              if item:
+                  ret += '|'
+              for pos in range(BITS_PER_GROUP):
+                  val = val * 2 + internal[(target * GROUPS + item) * BITS_PER_GROUP + pos]
+                  new = True
+                  if pos == 3:
+                      ret += 'L' if val == 0 else 'H' if val == 15 else str(val) if val < 10 else chr(val+55) # 10 -> A
+                  elif pos == 5:
+                      ret += str ((1, 2, 3, 5) [val])
+                  elif pos == 7:
+                      ret += "LHDC"[val] # see details above
+                  else:
+                      new = False
+                  if new:
+                      val = 0
+      return ret
 
   @staticmethod
   def parms ():
@@ -90,7 +140,7 @@ def eval_logger (*args):
     eval_history += msg[2:] + '\n'
 
 game = GOPSGame()
-gg = GeneticOverride (game, {'eval': {'static': 3, 'outputter': eval_logger}})
+gg = GeneticOverride (game, {'eval': {'static': 3, 'xoutputter': eval_logger}})
 print ('--Lets Go!--')
 ret = gg.optimize ()
 print ('--Eval History--')

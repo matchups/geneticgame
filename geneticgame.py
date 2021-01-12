@@ -302,6 +302,10 @@ class GeneticGame:
         count = len (self.chromes)
     best = []
 
+    display_fn = getattr(self.game, "display", None)
+    if not display_fn:
+        display_fn = self.game.decode
+
     # Loop through best chromosomes and collect information for reporting
     for seq in self.get_top(count):
         chrome = self.chromes[seq]
@@ -318,7 +322,7 @@ class GeneticGame:
         if result_parms ['bitstring']  or  all:
             msg += str (genes) + ' '
         if result_parms ['external']  or  all:
-            msg += str (self.game.decode (genes)) + ' '
+            msg += str (display_fn (genes)) + ' '
         if result_parms ['internal']  or  all:
             msg += str (chrome)
 
