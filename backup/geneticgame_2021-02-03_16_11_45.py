@@ -33,7 +33,7 @@ class GeneticGame:
     eval = self.parms['eval'] if 'eval' in self.parms else False
     defaulter (self.parms, {'carryover': 0, 'chrome_length': -1, 'crossovers': 1, 'debug': 0, 'eval': {}, 'game_parms': {}, 'load': False, \
         'log': True, 'matches_per_round': 20, 'mutations': 1, 'population': 50, 'result': {}, 'rounds': 50, 'save': False, 'style': "B", 'survivor_ratio': .5, \
-        'villages': 1, 'use_args': True, 'crossovers_fn': self.crossovers, 'mutations_fn': self.mutations, 'pairing_fn': self.pairing_random})
+        'use_args': True, 'crossovers_fn': self.crossovers, 'mutations_fn': self.mutations, 'pairing_fn': self.pairing_random})
     self.chromes = {}
     defaulter (self.parms['eval'], {'end': True, 'interval': 1, 'start': True, 'style': 'A', 'top_count': 1, 'outputter': print, 'log': False})
     defaulter (self.parms['result'], {'score': True, 'external': True, 'internal': False, 'bitstring': False, 'count': 3, 'type': 'T'})
@@ -60,21 +60,9 @@ class GeneticGame:
                 next = False
             elif re.match ("-?[0-9]+", next):
                 next = int(next)
-            elif re.match ("-?[.0-9]+", next):
-                next = float(next)
-            elif re.match ("^P[.0-9]+", next):
-                next = float(next[1:])
+            elif re.match ("^P[0-9]+", next):
+                next = int(next[1:])
                 fntag = '_poisson'
-            if re.match ("^-*h[elp]?", arg):
-                for key, value in self.parms.items():
-                    fnparm = re.search ("bound method (.*) of <(.*)>", str(value))
-                    if fnparm:
-                        pieces = [0, 0]
-                        for p in (1, 2):
-                            pieces [p - 1] = fnparm.group(p).split(' ')[0].split('.')[1]
-                        self.parms[key] = pieces[1] + '.' + pieces[0]
-                print (self.parms)
-                exit ()
             if skip:
                 skip = False
             else:
@@ -172,11 +160,24 @@ class GeneticGame:
       ''' Build a pair of new descendant chromosomes from the parents
       '''
       new_genes = copy.deepcopy(parent_genes)
+      info = {'start': copy.deepcopy(new_genes)}
       for cross_point in random.sample(range(self.parms['chrome_length']), k=self.parms['crossovers_fn']()):
           new_genes = [new_genes[0][:cross_point] + new_genes[1][cross_point:], new_genes[1][:cross_point] + new_genes[0][cross_point:]]
+          info [f"X{cross_point}"] = copy.deepcopy(new_genes)
       for who in (0, 1):
           for change_point in random.sample(range(self.parms['chrome_length']), k=self.parms['mutations_fn']()):
               new_genes[who][change_point] = self.parms['flip_fn'](new_genes[who][change_point], change_point)
+              info [f"D{who} {change_point}"] = copy.deepcopy(new_genes)
+      if self.gen == 25  and  random.randrange(3) == 1:
+          print ('----')
+          for key, genes in info.items():
+              msg = f"{key:5} "
+              for who in (0, 1):
+                  msg += ' '
+                  for gene in range (24):
+                      msg += str (genes[who][gene])
+              msg += '->' + getattr(self.game, "display") (genes[1])
+              print (msg)
 
       return new_genes
 
@@ -261,10 +262,7 @@ class GeneticGame:
         updfn (cnum, score)
 
     # Output results
-    toprint = [retfn()]
-    if len (logs):
-        toprint.append (logs)
-    eval_parms['outputter'] (*toprint)
+    eval_parms['outputter'] (retfn(), logs)
 
   def evolve (self):
     ''' Create the next generation
@@ -491,8 +489,8 @@ class GeneticGame:
               self.pregame (p1, p2)
               ret = self.game.play (self.genes(p1), self.genes(p2), self.parms['game_parms'])
               score = ret['score']
-              if self.parms['debug'] > 1:
-                  if self.parms['debug'] > 2  and  'log' in ret:
+              if self.parms['debug'] > 0:
+                  if self.parms['debug'] > 1  and  'log' in ret:
                       print (ret['log'])
                   print (f"{self.gen}.{roundnum} {p1} vs {p2} -> {score}")
               if isinstance (score, tuple):

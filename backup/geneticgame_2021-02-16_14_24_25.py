@@ -60,10 +60,8 @@ class GeneticGame:
                 next = False
             elif re.match ("-?[0-9]+", next):
                 next = int(next)
-            elif re.match ("-?[.0-9]+", next):
-                next = float(next)
-            elif re.match ("^P[.0-9]+", next):
-                next = float(next[1:])
+            elif re.match ("^P[0-9]+", next):
+                next = int(next[1:])
                 fntag = '_poisson'
             if re.match ("^-*h[elp]?", arg):
                 for key, value in self.parms.items():
@@ -491,8 +489,8 @@ class GeneticGame:
               self.pregame (p1, p2)
               ret = self.game.play (self.genes(p1), self.genes(p2), self.parms['game_parms'])
               score = ret['score']
-              if self.parms['debug'] > 1:
-                  if self.parms['debug'] > 2  and  'log' in ret:
+              if self.parms['debug'] > 0:
+                  if self.parms['debug'] > 1  and  'log' in ret:
                       print (ret['log'])
                   print (f"{self.gen}.{roundnum} {p1} vs {p2} -> {score}")
               if isinstance (score, tuple):
