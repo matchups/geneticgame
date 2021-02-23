@@ -5,5 +5,4 @@ This framework functions by taking a class which knows about the game and is abl
 
 The framework supports a range of settings, such as the numbers of crossovers and mutations, and also has a collection of hooks for further customization, such as the mutation mechanism.
 <hr>
-# Created by
-* Alan Frank <xnp@8wheels.org>
+Created by Alan Frank <xnp@8wheels.org>
